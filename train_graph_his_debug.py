@@ -26,10 +26,12 @@ from utils.distributed import get_rank, synchronize, reduce_loss_dict, Distribut
 from utils.graph_config import _C as graph_opt
 from utils.build_opt import make_optimizer, make_lr_scheduler
 
+import torch.nn.functional as F
+
 from model.topograph_net import FCOSPostprocessor, Topograph
 # from model.topograph_net_vgg16 import Topograph, FCOSPostprocessor
 from model.graph_matching import build_graph_matching_head
-from model.substructure_matching import substructure_matching_distance, substructure_matching_sinkhorn
+from model.substructure_matching import substructure_matching_distance, substructure_matching_sinkhorn, substructure_matching_L2
 from utils.slice import slice_tensor
 from torch.utils.tensorboard import SummaryWriter 
 from skimage import exposure
@@ -202,6 +204,9 @@ class Trainer():
                 #     torch.from_numpy(exposure.match_histograms(img.permute(1, 2, 0).numpy(), img_target.permute(1, 2, 0).numpy())).permute(2, 0, 1)
                 #     for img, img_target in zip(imgs_src.tensors, imgs_tgt.tensors)
                 # ], dim=0).float()
+
+                imgs_src.tensors = F.interpolate(imgs_src.tensors, size=(896, 896), mode='bilinear', align_corners=False)
+                imgs_tgt.tensors = F.interpolate(imgs_tgt.tensors, size=(896, 896), mode='bilinear', align_corners=False)
                 
                 (features_src, _, _, _), _, losses = \
                     self.model(imgs_src.tensors.to(device=opt.device), image_sizes=None, targets=targets_src, train=True, domain='Source')
@@ -228,7 +233,7 @@ class Trainer():
                 #         # 规范是否拥有所有类别节点
                 #         unique_v = set(label.tolist())
                 #         if len(unique_v) == self.label_num and set(range(1, self.label_num + 1)).issubset(unique_v):
-                #             loss_sub_m += substructure_matching_sinkhorn(targets_src[i], boxes[0],self.label_num)
+                #             loss_sub_m += substructure_matching_L2(targets_src[i], boxes[0],self.label_num)
                 #         else:
                 #             continue
                 
@@ -315,6 +320,7 @@ class Trainer():
 
             preds = {}
             imgs = imgs.tensors.to(device=opt.device)
+            imgs = F.interpolate(imgs, size=(896, 896), mode='bilinear', align_corners=False)
 
             gt_targets = [target.to('cpu') for target in gt_targets]
 
