@@ -232,6 +232,7 @@ class Trainer():
                 backbone_loss = loss_cls + loss_box + loss_center
 
                 loss_matching = sum(loss for loss in middle_head_loss.values())
+                ## loss_matching including loss_classification and loss_matching
                 # loss_matching = torch.tensor(0,device=opt.device,dtype=float)
                 overall_loss = backbone_loss + loss_matching * 0.5 + loss_sub_m * 0.5
                  
