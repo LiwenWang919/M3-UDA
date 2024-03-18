@@ -164,18 +164,7 @@ class Trainer():
 
             source_iter = iter(self.train_source_dataloader)
             target_iter = iter(self.train_target_dataloader)
-            
-            # train_source_dataloader = iter(self.train_source_dataloader)
-            # train_target_dataloader = iter(self.train_target_dataloader)
-            # train_target_dataloader_use = train_target_dataloader
-            # train_target_dataloader_second = iter(self.train_target_dataloader)
-            
-            # if len(train_source_dataloader) > len(train_target_dataloader):
-            #     max_step = len(train_target_dataloader)
-            # else:
-            #     max_step = len(train_source_dataloader)
 
-            # for step, (imgs_src, targets_src, _) in enumerate(tqdm(train_source_dataloader)):
             for _ in tqdm(range(max_len)):
                 # if step == max_step:
                 #     train_target_dataloader_use = train_target_dataloader_second
@@ -196,14 +185,14 @@ class Trainer():
 
                 # sp Tranfer (histogram match)
                 # 两种写法 一种使用exposure 另一种使用match_histograms 在/v3/utils/histogram_util.py 中
-                # imgs_src = torch.stack([
-                #     torch.from_numpy(match_histograms(img.permute(1, 2, 0).numpy(), img_target.permute(1, 2, 0).numpy())).permute(2, 0, 1)
-                #     for img, img_target in zip(imgs_src.tensors, imgs_tgt.tensors)
-                # ], dim=0).float()
-                # imgs_src.tensors = torch.stack([
-                #     torch.from_numpy(exposure.match_histograms(img.permute(1, 2, 0).numpy(), img_target.permute(1, 2, 0).numpy())).permute(2, 0, 1)
-                #     for img, img_target in zip(imgs_src.tensors, imgs_tgt.tensors)
-                # ], dim=0).float()
+                imgs_src = torch.stack([
+                    torch.from_numpy(match_histograms(img.permute(1, 2, 0).numpy(), img_target.permute(1, 2, 0).numpy())).permute(2, 0, 1)
+                    for img, img_target in zip(imgs_src.tensors, imgs_tgt.tensors)
+                ], dim=0).float()
+                imgs_src.tensors = torch.stack([
+                    torch.from_numpy(exposure.match_histograms(img.permute(1, 2, 0).numpy(), img_target.permute(1, 2, 0).numpy())).permute(2, 0, 1)
+                    for img, img_target in zip(imgs_src.tensors, imgs_tgt.tensors)
+                ], dim=0).float()
 
                 imgs_src.tensors = F.interpolate(imgs_src.tensors, size=(896, 896), mode='bilinear', align_corners=False)
                 imgs_tgt.tensors = F.interpolate(imgs_tgt.tensors, size=(896, 896), mode='bilinear', align_corners=False)
@@ -218,24 +207,24 @@ class Trainer():
                 (_, _), middle_head_loss = self.graph_matching(None, (features_src, features_tgt), targets=targets_src, score_maps=score_maps_tgt)
                 
                 loss_sub_m = torch.tensor(0,device=opt.device,dtype=float)
-                # if epoch >= opt.match_start_epoch:
-                #     features_t_slice = slice_tensor(features_tgt)
-                #     cls_pred_t_slice = slice_tensor(cls_pred_tgt)
-                #     box_pred_t_slice = slice_tensor(box_pred_tgt)
-                #     center_pred_t_slice = slice_tensor(center_pred_tgt)
+                if epoch >= opt.match_start_epoch:
+                    features_t_slice = slice_tensor(features_tgt)
+                    cls_pred_t_slice = slice_tensor(cls_pred_tgt)
+                    box_pred_t_slice = slice_tensor(box_pred_tgt)
+                    center_pred_t_slice = slice_tensor(center_pred_tgt)
                     
-                #     for i in range(len(targets_src)):
-                #         location = self.compute_location(features_t_slice[i])
-                #         boxes = self.postprocessor(
-                #             location, cls_pred_t_slice[i], box_pred_t_slice[i], center_pred_t_slice[i], imgs_tgt.sizes[i]
-                #         )
-                #         label = boxes[0].fields['labels']
-                #         # 规范是否拥有所有类别节点
-                #         unique_v = set(label.tolist())
-                #         if len(unique_v) == self.label_num and set(range(1, self.label_num + 1)).issubset(unique_v):
-                #             loss_sub_m += substructure_matching_L2(targets_src[i], boxes[0],self.label_num)
-                #         else:
-                #             continue
+                    for i in range(len(targets_src)):
+                        location = self.compute_location(features_t_slice[i])
+                        boxes = self.postprocessor(
+                            location, cls_pred_t_slice[i], box_pred_t_slice[i], center_pred_t_slice[i], imgs_tgt.sizes[i]
+                        )
+                        label = boxes[0].fields['labels']
+                        # 规范是否拥有所有类别节点
+                        unique_v = set(label.tolist())
+                        if len(unique_v) == self.label_num and set(range(1, self.label_num + 1)).issubset(unique_v):
+                            loss_sub_m += substructure_matching_L2(targets_src[i], boxes[0],self.label_num)
+                        else:
+                            continue
                 
                 loss_cls = losses['loss_cls'].mean()
                 loss_box = losses['loss_box'].mean()
@@ -244,7 +233,7 @@ class Trainer():
 
                 loss_matching = sum(loss for loss in middle_head_loss.values())
                 # loss_matching = torch.tensor(0,device=opt.device,dtype=float)
-                overall_loss = backbone_loss + loss_matching + loss_sub_m
+                overall_loss = backbone_loss + loss_matching * 0.5 + loss_sub_m * 0.5
                  
                 for opt_k in self.optimizer:
                     self.optimizer[opt_k].zero_grad()
@@ -254,8 +243,8 @@ class Trainer():
                 for opt_k in self.optimizer:
                     self.optimizer[opt_k].step()
 
-            # if not isinstance(loss_sub_m, torch.Tensor):
-            #     loss_sub_m = torch.tensor(loss_sub_m,device=opt.device,dtype=float)
+            if not isinstance(loss_sub_m, torch.Tensor):
+                loss_sub_m = torch.tensor(loss_sub_m,device=opt.device,dtype=float)
                 
             eval_result = self.eval(self.vaild_dataloader, test_num=self.opt.test_num)
             log_info = 'epoch:{}, map:{},loss:{},backbone_loss:{},loss_matching:{},loss_sub_m:{},ap:{}'.format(str(epoch),
