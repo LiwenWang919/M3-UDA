@@ -185,10 +185,10 @@ class Trainer():
 
                 # sp Tranfer (histogram match)
                 # 两种写法 一种使用exposure 另一种使用match_histograms 在/v3/utils/histogram_util.py 中
-                imgs_src = torch.stack([
-                    torch.from_numpy(match_histograms(img.permute(1, 2, 0).numpy(), img_target.permute(1, 2, 0).numpy())).permute(2, 0, 1)
-                    for img, img_target in zip(imgs_src.tensors, imgs_tgt.tensors)
-                ], dim=0).float()
+                # imgs_src = torch.stack([
+                #     torch.from_numpy(match_histograms(img.permute(1, 2, 0).numpy(), img_target.permute(1, 2, 0).numpy())).permute(2, 0, 1)
+                #     for img, img_target in zip(imgs_src.tensors, imgs_tgt.tensors)
+                # ], dim=0).float()
                 imgs_src.tensors = torch.stack([
                     torch.from_numpy(exposure.match_histograms(img.permute(1, 2, 0).numpy(), img_target.permute(1, 2, 0).numpy())).permute(2, 0, 1)
                     for img, img_target in zip(imgs_src.tensors, imgs_tgt.tensors)
