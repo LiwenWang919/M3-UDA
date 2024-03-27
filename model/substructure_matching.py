@@ -174,7 +174,7 @@ def substructure_matching_L2(targets_src, boxes_t, label_num):
     squared_diff = diff.pow(2)
     loss = torch.sqrt(squared_diff.sum(dim=1))
     
-    return loss
+    return sum(loss)
 
 # 计算点之间的角度（弧度）
 def calculate_angle(point1, point2):
