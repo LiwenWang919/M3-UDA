@@ -189,9 +189,9 @@ class Trainer():
                 #     torch.from_numpy(match_histograms(img.permute(1, 2, 0).numpy(), img_target.permute(1, 2, 0).numpy())).permute(2, 0, 1)
                 #     for img, img_target in zip(imgs_src.tensors, imgs_tgt.tensors)
                 # ], dim=0).float()
-                imgs_src.tensors = torch.stack([
+                imgs_tgt.tensors = torch.stack([
                     torch.from_numpy(exposure.match_histograms(img.permute(1, 2, 0).numpy(), img_target.permute(1, 2, 0).numpy())).permute(2, 0, 1)
-                    for img, img_target in zip(imgs_src.tensors, imgs_tgt.tensors)
+                    for img, img_target in zip(imgs_tgt.tensors, imgs_src.tensors)
                 ], dim=0).float()
                 
                 (features_src, _, _, _), _, losses = \
