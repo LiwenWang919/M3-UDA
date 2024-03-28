@@ -31,7 +31,7 @@ import torch.nn.functional as F
 from model.topograph_net import FCOSPostprocessor, Topograph
 # from model.topograph_net_vgg16 import Topograph, FCOSPostprocessor
 from model.graph_matching import build_graph_matching_head
-from model.substructure_matching import substructure_matching_distance, substructure_matching_sinkhorn, substructure_matching_L2
+from model.substructure_matching import substructure_matching_sinkhorn, substructure_matching_L2
 from utils.slice import slice_tensor
 from torch.utils.tensorboard import SummaryWriter 
 from skimage import exposure
@@ -184,7 +184,7 @@ class Trainer():
                 targets_src = [target.to(device=opt.device) for target in targets_src]
 
                 # sp Tranfer (histogram match)
-                # 两种写法 一种使用exposure 另一种使用match_histograms 在/v3/utils/histogram_util.py 中
+                # two ways, first implement with exposure and second one implement with match_histograms in /v3/utils/histogram_util.py
                 # imgs_src = torch.stack([
                 #     torch.from_numpy(match_histograms(img.permute(1, 2, 0).numpy(), img_target.permute(1, 2, 0).numpy())).permute(2, 0, 1)
                 #     for img, img_target in zip(imgs_src.tensors, imgs_tgt.tensors)
@@ -216,7 +216,7 @@ class Trainer():
                             location, cls_pred_t_slice[i], box_pred_t_slice[i], center_pred_t_slice[i], imgs_tgt.sizes[i]
                         )
                         label = boxes[0].fields['labels']
-                        # 规范是否拥有所有类别节点
+                        # Specifies whether all class nodes are owned
                         unique_v = set(label.tolist())
                         if len(unique_v) == self.label_num and set(range(1, self.label_num + 1)).issubset(unique_v):
                             loss_sub_m += substructure_matching_L2(targets_src[i], boxes[0],self.label_num)
