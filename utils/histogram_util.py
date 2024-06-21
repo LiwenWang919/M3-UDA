@@ -6,15 +6,12 @@ import torch.nn.functional as F
 
 def match_histogram_argmin(source_img, target_img):
 
-    # 计算源图像和目标图像的直方图
     hist_source = torch.histc(source_img, bins=256, min=0, max=255)
     hist_target = torch.histc(target_img, bins=256, min=0, max=255)
 
-    # 标准化直方图
     hist_source = hist_source / hist_source.sum()
     hist_target = hist_target / hist_target.sum()
 
-    # 创建一个映射表，将源图像的像素值映射到目标图像
     cumulative_source = torch.cumsum(hist_source, dim=0)
     cumulative_target = torch.cumsum(hist_target, dim=0)
     mapping_table = torch.zeros(256)
@@ -22,7 +19,6 @@ def match_histogram_argmin(source_img, target_img):
     for i in range(256):
         mapping_table[i] = torch.argmin(torch.abs(cumulative_source - cumulative_target[i]))
 
-    # 使用映射表将源图像像素值调整为匹配目标图像
     matched_image = mapping_table[source_img.to(torch.int64)].to(torch.float32)
 
     return matched_image
